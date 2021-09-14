@@ -26,8 +26,8 @@ plot(series=signalLine, color=color.orange, linewidth=2)
 hline(price=0)
 
 // Determine long and short conditions
-longCondition  = crossover(macdLine, signalLine)
-shortCondition = crossunder(macdLine, signalLine)
+longCondition  = macdLine < 0 and crossover(macdLine, signalLine)
+shortCondition = macdLine > 0 and crossunder(macdLine, signalLine)
 
 // =========== Buy / Sell
 if (month >= startMonth and year == startYear) or year > startYear
