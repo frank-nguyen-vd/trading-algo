@@ -1,5 +1,5 @@
 //@version=4
-strategy(title="Bollinger Bands Breakout",initial_capital=1000,
+strategy(title="Bollinger Bands Simple Strategy",initial_capital=1000,
      currency=currency.USD, default_qty_type=strategy.cash,
      default_qty_value=1000, commission_type=strategy.commission.cash_per_order, 
      commission_value=1.0, pyramiding=1, overlay=true)
@@ -41,6 +41,8 @@ sellBoundary = MID + (sdOffset * 0.8 * sdPrice)
 stopLoss = 0.8
 stockValue = open
 
+
+// =========== Buy / Sell
 if (month >= startMonth and year == startYear) or year > startYear
     buySignal := crossover(stockValue, buyBoundary)
     sellSignal := stockValue < stopLoss * valuewhen(buySignal, stockValue, 0) or crossunder(stockValue, sellBoundary)

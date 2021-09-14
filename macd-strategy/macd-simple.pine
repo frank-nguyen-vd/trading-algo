@@ -1,0 +1,35 @@
+//@version=4
+strategy(title="MACD Simple Strategy",initial_capital=1000,
+     currency=currency.USD, default_qty_type=strategy.cash,
+     default_qty_value=1000, commission_type=strategy.commission.cash_per_order, 
+     commission_value=1.0, pyramiding=1, overlay=true)
+
+// ========  Input Options
+
+fastLen = input(title="Fast Length", type=input.integer, defval=12)
+slowLen = input(title="Slow Length", type=input.integer, defval=26)
+sigLen  = input(title="Signal Length", type=input.integer, defval=9)
+
+// The starting date of trading
+startMonth = input(title="Start Month", type=input.integer, defval=1)
+startYear = input(title="Start Year", type=input.integer, defval=2021)
+
+// =========  Compute values
+
+// Get MACD values
+[macdLine, signalLine, _] = macd(close, fastLen, slowLen, sigLen)
+
+// Plot MACD values and line
+plot(series=macdLine, color=#6495ED, linewidth=2)
+plot(series=signalLine, color=color.orange, linewidth=2)
+
+hline(price=0)
+
+// Determine long and short conditions
+longCondition  = crossover(macdLine, signalLine)
+shortCondition = crossunder(macdLine, signalLine)
+
+// =========== Buy / Sell
+if (month >= startMonth and year == startYear) or year > startYear
+    strategy.entry(id="Long", long=true, when=longCondition)
+    strategy.close(id="Long", when=shortCondition)
