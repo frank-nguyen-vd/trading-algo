@@ -37,7 +37,16 @@ plot(series=MID, color=color.black)
 plot(series=LMID, color=color.orange)
 plot(series=BOLD, color=color.red, linewidth=2)
 
+buySignal = false
+sellSignal = false
+
+buyBoundary = UMID
+sellBoundary = UMID
+
 if (month >= startMonth and year == startYear) or year > startYear
-    strategy.entry(id="Long", long=true, qty=orderSize, when=crossover(close, UMID))
-    strategy.close(id="Long", when=crossunder(close, LMID))
+    buySignal := crossover(close, buyBoundary)
+    sellSignal := close < valuewhen(buySignal, close, 0) or crossunder(close, sellBoundary)
+
+    strategy.entry(id="Long", long=true, qty=orderSize, when=buySignal)
+    strategy.close(id="Long", when=sellSignal)
 
