@@ -18,12 +18,12 @@ if trendRule == trendRule2
 	C_DownTrend := close < sma50 and sma50 < sma200
 	C_UpTrend := close > sma50 and sma50 > sma200
 
-C_Len = 14                      // ema depth for bodyAvg
-C_ShadowPercent = 5.0           // size of shadows
+C_Len = input(title="MA Size Of Candle Body", type=input.integer, defval=14)
+C_ShadowPercent = input(title="Shadow Percent", type=input.float, defval=5.0)
 C_ShadowEqualsPercent = 100.0
-C_DojiBodyPercent = 5.0
+C_DojiBodyPercent = input(title="Doji Body Percent", type=input.float, defval=5.0)
 C_Factor = 2.0                  // shows the number of times the shadow dominates the candlestick body
-
+C_MarubozuShadowPercent = input(title="Marubozu Shadow Percent", type=input.float, defval=5.0)
 // length and height
 C_BodyHi = max(close, open)             // 实体上部
 C_BodyLo = min(close, open)             // 实体下部
@@ -464,8 +464,7 @@ if C_EveningStarBearish and EveningStarInput and showBearishSignal
 
 
 C_MarubozuWhiteBullishNumberOfCandles = 1
-C_MarubozuShadowPercentWhite = 5.0
-C_MarubozuWhiteBullish = C_WhiteBody and C_LongBody and C_UpShadow <= C_MarubozuShadowPercentWhite/100*C_Body and C_DnShadow <= C_MarubozuShadowPercentWhite/100*C_Body and C_WhiteBody
+C_MarubozuWhiteBullish = C_WhiteBody and C_LongBody and C_UpShadow <= C_MarubozuShadowPercent/100*C_Body and C_DnShadow <= C_MarubozuShadowPercent/100*C_Body and C_WhiteBody
 alertcondition(C_MarubozuWhiteBullish, title = "Marubozu White 光头光脚阳线", message = "New Marubozu White - Bullish pattern detected.")
 if C_MarubozuWhiteBullish and MarubozuWhiteInput and showBullishSignal
     var msg_EN = "Marubozu White\nA Marubozu White Candle is a candlestick that does not have a shadow that extends from its candle body at either the open or the close. Marubozu is Japanese for “close-cropped” or “close-cut.” Other sources may call it a Bald or Shaven Head Candle."
@@ -478,8 +477,7 @@ if C_MarubozuWhiteBullish and MarubozuWhiteInput and showBullishSignal
 
 
 C_MarubozuBlackBearishNumberOfCandles = 1
-C_MarubozuShadowPercentBearish = 5.0
-C_MarubozuBlackBearish = C_BlackBody and C_LongBody and C_UpShadow <= C_MarubozuShadowPercentBearish/100*C_Body and C_DnShadow <= C_MarubozuShadowPercentBearish/100*C_Body and C_BlackBody
+C_MarubozuBlackBearish = C_BlackBody and C_LongBody and C_UpShadow <= C_MarubozuShadowPercent/100*C_Body and C_DnShadow <= C_MarubozuShadowPercent/100*C_Body and C_BlackBody
 alertcondition(C_MarubozuBlackBearish, title = "Marubozu Black", message = "New Marubozu Black - Bearish pattern detected.")
 if C_MarubozuBlackBearish and MarubozuBlackInput and showBearishSignal
     var msg_EN = "Marubozu Black\nThis is a candlestick that has no shadow, which extends from the red-bodied candle at the open, the close, or even at both. In Japanese, the name means “close-cropped” or “close-cut.” The candlestick can also be referred to as Bald or Shaven Head."
@@ -762,7 +760,6 @@ if C_TriStarBearish and BearishTriStarInput and showBearishSignal
 
 
 C_KickingBullishNumberOfCandles = 2
-C_MarubozuShadowPercent = 5.0
 C_Marubozu = C_LongBody and C_UpShadow <= C_MarubozuShadowPercent/100*C_Body and C_DnShadow <= C_MarubozuShadowPercent/100*C_Body
 C_MarubozuWhiteBullishKicking = C_Marubozu and C_WhiteBody
 C_MarubozuBlackBullish = C_Marubozu and C_BlackBody
