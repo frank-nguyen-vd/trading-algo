@@ -1,0 +1,35 @@
+//@version=4
+strategy(title="Stochastics Simple Strategy",initial_capital=1000, scale=scale.left,
+     currency=currency.USD, default_qty_type=strategy.cash,
+     default_qty_value=1000, commission_type=strategy.commission.cash_per_order, 
+     commission_value=1.0, pyramiding=1, overlay=true)
+
+// Inputs
+length  = input(title="Length", type=input.integer, defval=14)
+dLength = input(title="D Length", type=input.integer, defval=3)
+obLevel = input(title="Overbought", type=input.integer, defval=95)
+osLevel = input(title="Oversold", type=input.integer, defval=5)
+stopLoss = 0.9
+
+// The starting date of trading
+startMonth = input(title="Start Month", type=input.integer, defval=1)
+startYear = input(title="Start Year", type=input.integer, defval=2021)
+
+// Compute values
+stochK = stoch(close, high, low, length)
+stochD = sma(stochK, dLength)
+
+// Plot values
+plot(series=stochK, color=color.red, title="K")
+plot(series=stochD, color=color.blue, title="D")
+
+hline(price=obLevel, color=#C0C0C0)
+hline(price=osLevel, color=#C0C0C0)
+
+buySignal = crossover(stochK, osLevel)
+sellSignal = close < stopLoss * valuewhen(buySignal, close, 0) or crossunder(stochK, obLevel)
+
+// =========== Buy / Sell
+if (month >= startMonth and year == startYear) or year > startYear
+    strategy.entry(id="Long", long=true, when=buySignal)
+    strategy.close(id="Long", when=sellSignal)
