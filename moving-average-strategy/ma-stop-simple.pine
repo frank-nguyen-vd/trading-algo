@@ -1,0 +1,46 @@
+//@version=4
+strategy(title="Moving Average Stop Simple Strategy",initial_capital=1000,
+     currency=currency.USD, default_qty_type=strategy.cash,
+     default_qty_value=1000, commission_type=strategy.commission.cash_per_order, 
+     commission_value=1.0, pyramiding=1, overlay=true, calc_on_every_tick=true, backtest_fill_limits_assumption=2)
+
+// The starting date of trading
+startMonth = input(title="Start Month", type=input.integer, defval=1)
+startYear = input(title="Start Year", type=input.integer, defval=2021)
+
+// STEP 1:
+// Configure moving average with input options
+priceData = input(title="Price Data", type=input.source, defval=close)
+maLength  = input(title="Moving Average Length", type=input.integer,
+     defval=9, minval=2)
+
+// STEP 2:
+// Calculate the moving average
+maValue = ema(priceData, maLength)
+
+// Show moving average on the chart
+plot(series=maValue, color=color.orange, title="Moving Average")
+
+// Display stop prices for confirmation
+plot(series=(strategy.position_size > 0) ? maValue : na,
+     color=color.red, style=plot.style_circles, linewidth=3,
+     title="Long Stop")
+
+plot(series=(strategy.position_size < 0) ? maValue : na,
+     color=color.red, style=plot.style_cross, linewidth=3,
+     title="Short Stop")
+
+// Trading conditions for this example strategy
+floatPosition = (strategy.position_size == 0)
+longPosition = (strategy.position_size > 0)
+greenCandle = close > open
+isUptrend = maValue > maValue[1] and maValue[1] > maValue[2]
+
+buySignal = floatPosition and (close > maValue) and isUptrend and greenCandle
+sellSignal = longPosition and (close < maValue)
+
+// =========== Buy / Sell
+if (month >= startMonth and year == startYear) or year > startYear
+    strategy.entry(id="Long", long=true, when=buySignal)
+    strategy.close(id="Long", when=sellSignal)
+
