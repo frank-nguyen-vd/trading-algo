@@ -1,0 +1,57 @@
+//@version=4
+strategy(title="MACD + BB Simple Strategy",initial_capital=1000,
+     currency=currency.USD, default_qty_type=strategy.cash,
+     default_qty_value=1000, commission_type=strategy.commission.cash_per_order, 
+     commission_value=1.0, pyramiding=1, overlay=true, calc_on_every_tick=true, backtest_fill_limits_assumption=2)
+
+// ========  Input Options
+
+// Average period (width of the simple moving average window, in bars)
+bolLength = input(title="Bollinger Bands Length", type=input.integer, defval=20)
+
+// Standard deviation offset from the SMA line
+sdOffset = input(title="StDev Offset", type=input.float, defval=2, minval=0.1, step=0.25)
+
+// Target price
+TP = input(title="Price Source", type=input.source, defval=hlc3)
+
+// MACD Options
+fastLen = input(title="Fast Length", type=input.integer, defval=12)
+slowLen = input(title="Slow Length", type=input.integer, defval=26)
+sigLen  = input(title="Signal Length", type=input.integer, defval=9)
+
+// The starting date of trading
+startMonth = input(title="Start Month", type=input.integer, defval=1)
+startYear = input(title="Start Year", type=input.integer, defval=2021)
+
+// =========  Compute values
+MID = sma(TP, bolLength)
+sdPrice = stdev(TP, bolLength)
+
+BOLU = MID + (sdOffset * sdPrice)
+BOLD = MID - (sdOffset * sdPrice)
+
+orderSize = floor(0.5 * strategy.equity / close)
+
+[macdLine, signalLine, _] = macd(close, fastLen, slowLen, sigLen)
+
+longCondition  = crossover(macdLine, signalLine)
+shortCondition = crossunder(macdLine, signalLine)
+
+buySignal = false
+sellSignal = false
+
+buyBoundary = MID + (sdOffset * 0.4 * sdPrice)
+sellBoundary = MID + (sdOffset * 0.8 * sdPrice)
+stopLoss = 0.8
+stockValue = hlc3
+
+
+// =========== Buy / Sell
+if (month >= startMonth and year == startYear) or year > startYear
+    buySignal := crossover(stockValue, buyBoundary) or longCondition
+    sellSignal := stockValue < stopLoss * valuewhen(buySignal, stockValue, 0) or crossunder(stockValue, sellBoundary) or shortCondition
+
+    strategy.entry(id="Long", long=true, qty=orderSize, when=buySignal)
+    strategy.close(id="Long", when=sellSignal)
+
