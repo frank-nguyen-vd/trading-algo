@@ -39,10 +39,11 @@ sellSignal = false
 buyBoundary = MID + (sdOffset * 0.4 * sdPrice)
 sellBoundary = MID + (sdOffset * 0.8 * sdPrice)
 stopLoss = 0.8
+stockValue = open
 
 if (month >= startMonth and year == startYear) or year > startYear
-    buySignal := crossover(close, buyBoundary)
-    sellSignal := close < stopLoss * valuewhen(buySignal, close, 0) or crossunder(close, sellBoundary)
+    buySignal := crossover(stockValue, buyBoundary)
+    sellSignal := stockValue < stopLoss * valuewhen(buySignal, stockValue, 0) or crossunder(stockValue, sellBoundary)
 
     strategy.entry(id="Long", long=true, qty=orderSize, when=buySignal)
     strategy.close(id="Long", when=sellSignal)
