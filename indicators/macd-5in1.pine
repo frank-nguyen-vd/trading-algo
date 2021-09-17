@@ -1,0 +1,263 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © HamidBox
+
+
+//@version=4
+strategy("MACD [5-in-1]", default_qty_type=strategy.cash, default_qty_value=100, initial_capital=100, currency='USD', commission_value=0.1)
+
+matype_zone(src, len, type) =>
+    type == "EMA" ? ema(src, len) :
+     type == "SMA" ? sma(src, len) :
+     type == "RMA" ? rma(src, len) : 
+     type == "WMA" ? wma(src, len) : 
+     type == "VWMA" ? vwma(src, len) :
+     na
+
+matype_signal(src, len, type) =>
+    type == "EMA" ? ema(src, len) :
+     type == "SMA" ? sma(src, len) :
+     type == "RMA" ? rma(src, len) : 
+     type == "WMA" ? wma(src, len) : 
+     type == "VWMA" ? vwma(src, len) :
+     na
+
+// MACD INPUTS ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+macd_FastLength     = input(title="MACD Fast", defval=12, minval=1, type=input.integer, inline="fastslow")                      ///
+macd_SlowLength     = input(title="MACD Slow ", defval=26, minval=1, type=input.integer, inline="fastslow")                     ///
+macd_signalLen      = input(title="Signal Line", defval=9, minval=1, type=input.integer, inline="signalsrc")                    ///
+macd_Source         = input(title="Source      ", defval=close, type=input.source, inline="signalsrc")                          ///
+MACD_Line           = input(title="Oscilattor ", defval="EMA", type=input.string, options=["EMA" , "SMA"], inline="matype")     ///
+SignalLine          = input(title="Signal       ", defval="EMA", type=input.string, options=["EMA" , "SMA"], inline="matype")   ///
+                                                                                                                                ///
+// MACD SETUP /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+macd_Fast           = MACD_Line == "SMA" ? sma(macd_Source , macd_FastLength) : ema(macd_Source , macd_FastLength)      ///
+macd_Slow           = MACD_Line == "SMA" ? sma(macd_Source , macd_SlowLength) : ema(macd_Source , macd_SlowLength)      ///
+MACD                = macd_Fast - macd_Slow                                                                             ///
+Signal              = SignalLine == "SMA" ? sma(MACD, macd_signalLen) : ema(MACD, macd_signalLen)                       ///
+histogram           = MACD - Signal                                                                                     ///
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// MACD CONDITIONS SECTION /////////////////////////////////////////////////////
+macd_grtr_signal    = MACD > Signal                                           //
+macd_less_signal    = MACD < Signal                                           //
+macd_crsovr_signal  = crossover(MACD , Signal) ? MACD : na      // FOR MACD CROSS DOT PLOTING //
+macd_crsndr_signal  = crossunder(MACD , Signal) ? MACD : na     // FOR MACD CROSS DOT PLOTING //                 
+macd_crsovr         = crossover(MACD , Signal)                                //
+macd_crsndr         = crossunder(MACD , Signal)                               //
+////////////////////////////////////////////////////////////////////////////////
+
+
+// Choose your Desire Signal ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+MACD_crs_signal     = input(false, "Stgy №1:👉 MACD CrossOver", group="CHOOSE YOUR DESIRE SIGNAL", tooltip="🚦🚦🚦 Condition 🚦🚦🚦\nBUY: MACD CrossOver Signal Line\nSELL: MACD CrossUnder Signal Line\nDefault Signal")
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+MACD_OB             = input(false, "Stgy №2:👉 MACD + OverBought ", inline="obs", group="CHOOSE YOUR DESIRE SIGNAL", tooltip="MACD also work as OverBought & OverSold system, same like RSI or other indicators who have OB/OS system, so i added OB-Level in MACD,\nso simple rule is: if MACD Lines is Above OB-Level, we will not take any trade, we only follow MACD signals when MACD-Lines will Below OB-Level")
+MACD_OB_LVL         = input(title="", defval=0.0, type=input.float, inline="obs", group="CHOOSE YOUR DESIRE SIGNAL", tooltip="MACD also work as OverBought & OverSold system, same like RSI or other indicators who have OB/OS system, so i added OB-Level in MACD,\nso simple rule is: if MACD Lines is Above OB-Level, we will not take any trade, we only follow MACD signals when MACD-Lines will Below OB-Level") 
+hline(MACD_OB_LVL, color=color.red, title="MACD OB", linestyle=hline.style_dashed)
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+MACD_close          = input(false, "Stgy №3:👉 MACD + Close         ", inline="MAsignal", group="CHOOSE YOUR DESIRE SIGNAL", tooltip="🚦🚦🚦 Condition 🚦🚦🚦\n\nBUY RULES\n1st: MACD CrossOver Signal Line\n2nd: Close (Greater) Than Moving Average\n\nSELL RULES\n1st: MACD CrossUnder Signal Line\n2nd: Close (Less) Than Moving Average\n\nExplanation: When (MACD Cross Signal Line) and also Market current Candle Close or previous 1st-4th any Candle will have close greater than Moving Average (You Choose: EMA or SMA etc...)\n🚦NOTE: in this Condition only Singal Moving Average work => (Slow MA),")
+MA_signal_len       = input(title="", defval=21, type=input.integer, inline="MAsignal", group="CHOOSE YOUR DESIRE SIGNAL")    //      // 
+MA_signal_type      = input(title="", defval="EMA", options=["SMA" , "EMA" , "RMA", "WMA" , "VWMA" , "DEMA", "TEMA"], inline="MAsignal", group="CHOOSE YOUR DESIRE SIGNAL", tooltip="🚦🚦🚦 Condition 🚦🚦🚦\n\nBUY RULES\n1st: MACD CrossOver Signal Line\n2nd: Close (Greater) Than Moving Average\n\nSELL RULES\n1st: MACD CrossUnder Signal Line\n2nd: Close (Less) Than Moving Average\n\nExplanation: When (MACD Cross Signal Line) and also Market current Candle Close will have close greater than Moving Average (You Choose: EMA or SMA etc...)")     //      //
+
+dema = if MA_signal_type == "DEMA"
+    ema = ema(close , MA_signal_len)
+    2 * ema - ema(ema , MA_signal_len)
+tema = if MA_signal_type == "TEMA"
+    ema = ema(close , MA_signal_len)
+    3 * (ema - ema(ema, MA_signal_len)) + ema(ema(ema, MA_signal_len), MA_signal_len)
+
+MA_signal           = matype_zone(close, MA_signal_len, MA_signal_type)
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+MACD_ZONE           = input(false, "Stgy №4:👉 MACD + MA-ZONE    ", inline="MAZONE", group="CHOOSE YOUR DESIRE SIGNAL", tooltip="🚦🚦🚦 Condition 🚦🚦🚦\n\nBUY RULES:\n1st: MACD CrossOver Signal Line\n2nd: Close (Greater) than (MA-ZONE)\n\nSELL RULES:\n1st: MACD CrossUnder Signal Line\n2nd: Close (Less) than (MA-ZONE)")
+MA_zone_len         = input(title="", defval=21, type=input.integer, inline="MAZONE", group="CHOOSE YOUR DESIRE SIGNAL")
+MA_zone_type        = input(title="", defval="EMA", options=["SMA" , "EMA" , "RMA", "WMA" , "VWMA" , "DEMA", "TEMA"], inline="MAZONE", group="CHOOSE YOUR DESIRE SIGNAL", tooltip="🚦🚦🚦 Condition 🚦🚦🚦\n\nBUY RULES:\n1st: MACD CrossOver Signal Line\n2nd: Close (Greater) than (MA-ZONE)\n\nSELL RULES:\n1st: MACD CrossUnder Signal Line\n2nd: Close (Less) than (MA-ZONE)")
+
+dema2 = if MA_zone_type == "DEMA"
+    ema = ema(close , MA_zone_len)
+    2 * ema - ema(ema , MA_zone_len)
+tema2 = if MA_zone_type == "TEMA"
+    ema = ema(close , MA_zone_len)
+    3 * (ema - ema(ema, MA_zone_len)) + ema(ema(ema, MA_zone_len), MA_zone_len)
+
+MA_zone_srcHi       = matype_signal(high, MA_zone_len, MA_zone_type)                                                                                        //      //
+MA_zone_srcLO       = matype_signal(low, MA_zone_len, MA_zone_type)
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+MACD_wid_rsiOB      = input(false, "Stgy №5:👉 MACD + RSI-OB", group="CHOOSE YOUR DESIRE SIGNAL")
+rsilen              = input(title="Length", defval=14, type=input.integer, inline="rsi", group="CHOOSE YOUR DESIRE SIGNAL")
+rsi_ent_value       = input(title="Entry", defval=50, type=input.integer, minval=1, inline="rsi", group="CHOOSE YOUR DESIRE SIGNAL", tooltip="🚦🚦🚦 Condition 🚦🚦🚦\n\nBUY Rule\nMACD Crossover Signal\nRSI Greater then Entry Level (You Choose)\n\n🚦🚦🚦 Explanation 🚦🚦🚦\nWe have RSI with 2 Levels,\n1st: Entry Level\n2nd: No-Entry Level\n\nEntry level:\nfor never want to BUY trade when RSI is Below our specific Level, like you want open Trade when RSI above 50 level or 30 level etc... \n\nNo-Entry Level:\nthis is same as (Entry Level) Condition, as we know RSI-70 level use for OverBought, and its mean market will go down after RSI-OB level, and thats why we can set overbought level for NO-ENTRY when Market is on OverBought area.")
+rsi_ob_value        = input(title="No-Entry", defval=70, minval=1, type=input.integer, inline="rsi", group="CHOOSE YOUR DESIRE SIGNAL")   
+RSI                 = rsi(close , rsilen)
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+startTime           =       input(title="Start Time                           ", type = input.time, defval = timestamp("01 Jan 2021 00:00 +0000"), inline="Backtesting Time Period")
+endTime             =       input(title="End Time                          ", type = input.time, defval = timestamp("01 Jan 2022 00:00 +0000"))
+
+inDateRange         =       (time >= startTime) and (time < endTime)
+
+
+// Stgy №1:👉 MACD Cross Signal CONDITION //////////////////////////////////////
+// ENTRY EXIT SECTION //////////////////////////////////////////////////////////
+// (( MACD + CLOSE ))                                                       ////
+if macd_crsovr and MACD_crs_signal and inDateRange                   ////
+    strategy.entry("BUY", strategy.long, comment="S#1")                     ////
+if macd_crsndr and MACD_crs_signal and inDateRange                  ////
+    strategy.close("BUY", comment="x")                                      ////
+////////////////////////////////////////////////////////////////////////////////
+// // Stgy №1 Ploting 
+// plotshape(MACD_crs_signal ? macd_crsovr : na, title="Stgy Sign", color=color.blue, style=shape.labelup, text="MACD", textcolor=color.white, location=location.bottom)
+// plotshape(MACD_crs_signal ? macd_crsndr : na, title="Stgy Sign", color=color.maroon, style=shape.labeldown, text="MACD-x", textcolor=color.white, location=location.top)
+// ////////////////////////////////////////////////////////////////////////////////
+
+
+// Stgy №2:👉 MACD + OverBought CONDITION //////////////////////////////////////
+only_Trade_when     = MACD < MACD_OB_LVL and Signal < MACD_OB_LVL           ////
+macd_ob_buy         = macd_crsovr and only_Trade_when                       ////
+macd_ob_sell        = macd_crsndr                                           ////
+////////////////////////////////////////////////////////////////////////////////
+// ENTRY EXIT SECTION //////////////////////////////////////////////////////////
+// (( MACD + ZONE ))                                                        ////
+if macd_ob_buy and MACD_OB and inDateRange                                  ////
+    strategy.entry("BUY", strategy.long, comment="S#2")                     ////
+if macd_ob_sell and MACD_OB and inDateRange                                 ////
+    strategy.close("BUY", comment="x")                                      ////
+////////////////////////////////////////////////////////////////////////////////
+// plotshape(MACD_OB ? macd_ob_buy : na, title="Stgy Sign", color=color.blue, style=shape.labelup, text="M+OB", textcolor=color.white, location=location.bottom)
+// plotshape(MACD_OB ? macd_ob_sell : na, title="Stgy Sign", color=color.maroon, style=shape.labeldown, text="M+OB-x", textcolor=color.white, location=location.top)
+// ////////////////////////////////////////////////////////////////////////////////
+
+
+
+// Stgy №3:👉 MACD + CLOSE CONDITION ///////////////////////////////////////////
+macd_close_buy       = macd_crsovr and ( ( close > MA_signal or (close[1] > MA_signal[1]) or (close[2] > MA_signal[2]) or (close[3] > MA_signal[3]) )    or    ( close > dema  or (close[1] > dema[1]) or (close[2] > dema[2]) or (close[3] > dema[3]) )    or    ( close > tema  or (close[1] > tema[1]) or (close[2] > tema[2]) or (close[3] > tema[3]) ) ) 
+macd_close_sell      = macd_crsndr and ( ( close > MA_signal or (close[1] < MA_signal[1]) or (close[2] < MA_signal[2]) or (close[3] < MA_signal[3]) )    or    ( close < dema  or (close[1] < dema[1]) or (close[2] < dema[2]) or (close[3] < dema[3]) )    or    ( close < tema  or (close[1] < tema[1]) or (close[2] < tema[2]) or (close[3] < tema[3]) ) )                  ////
+////////////////////////////////////////////////////////////////////////////////
+// ENTRY EXIT SECTION //////////////////////////////////////////////////////////
+// (( MACD + CLOSE ))                                                       ////
+if macd_close_buy and MACD_close and inDateRange                            ////
+    strategy.entry("BUY", strategy.long, comment="S#3")                     ////
+if macd_close_sell and MACD_close and inDateRange                           ////
+    strategy.close("BUY", comment="x")                                      ////
+////////////////////////////////////////////////////////////////////////////////
+// // Stgy №3 Ploting 
+// plotshape(MACD_close ? macd_close_buy : na, title="Stgy Sign", color=color.blue, style=shape.labelup, text="MACD", textcolor=color.white, location=location.bottom)
+// plotshape(MACD_close ? macd_close_sell : na, title="Stgy Sign", color=color.maroon, style=shape.labeldown, text="MACD-x", textcolor=color.white, location=location.top)
+// ////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+// Stgy №3:👉 MACD + MA-ZONE MACD + ZONE CONDITION /////////////////////////////
+macd_zone_buy       = macd_crsovr and ( ( close > MA_zone_srcHi or (close[1] > MA_zone_srcHi[1]) or (close[2] > MA_zone_srcHi[2]) or (close[3] > MA_zone_srcHi[3]) )    or      ( close > dema2 or (close[1] > dema2[1]) or (close[2] > dema2[2]) or (close[3] > dema2[3]) )    or      ( close > tema2 or (close[1] > tema2[1]) or (close[2] > tema2[2]) or (close[3] > tema2[3]) )   )            ////
+macd_zone_sell      = macd_crsndr and ( ( close < MA_zone_srcHi or (close[1] < MA_zone_srcHi[1]) or (close[2] < MA_zone_srcHi[2]) or (close[3] < MA_zone_srcHi[3]) )    or      ( close < dema2 or (close[1] < dema2[1]) or (close[2] < dema2[2]) or (close[3] < dema2[3]) )    or      ( close < tema2 or (close[1] < tema2[1]) or (close[2] < tema2[2]) or (close[3] < tema2[3]) )   )           ////
+////////////////////////////////////////////////////////////////////////////////
+// ENTRY EXIT SECTION //////////////////////////////////////////////////////////
+// (( MACD + ZONE ))                                                        ////
+if macd_zone_buy and MACD_ZONE and inDateRange                              ////
+    strategy.entry("BUY", strategy.long, comment="S#4")                     ////
+if macd_zone_sell and MACD_ZONE and inDateRange                             ////
+    strategy.close_all()                                      ////
+////////////////////////////////////////////////////////////////////////////////
+
+
+
+// Stgy №5:👉 MACD + RSI-OB CONDITION //////////////////////////////////////////
+MACD_rsi_EnBuy         = RSI > rsi_ent_value and RSI < rsi_ob_value         ////
+MACD_rsi_EnSell         = RSI < rsi_ent_value           ////
+MACD_rsi_Ex       = crossunder(RSI , rsi_ob_value) or crossunder(RSI[1] , rsi_ob_value[1]) or crossunder(RSI[2] , rsi_ob_value[2]) or crossunder(RSI[3] , rsi_ob_value[3]) or crossunder(RSI[4] , rsi_ob_value[4]) or crossunder(RSI[5] , rsi_ob_value[5]) or crossunder(RSI[6] , rsi_ob_value[6])         ////
+                                                                            ////
+////////////////////////////////////////////////////////////////////////////////
+// ENTRY EXIT SECTION //////////////////////////////////////////////////////////
+// ((MACD + RSI-OB ))                                                       ////
+if macd_crsovr and MACD_rsi_EnBuy and MACD_wid_rsiOB and inDateRange        ////
+    strategy.entry("BUY", strategy.long, comment="S#5")                     ////
+if macd_crsndr and MACD_wid_rsiOB and inDateRange                           ////
+    strategy.close("BUY", comment="x")                                      ////
+////////////////////////////////////////////////////////////////////////////////
+if (not inDateRange)           ///
+    strategy.close_all()       ///
+//////////////////////////////////
+
+
+
+
+
+
+
+
+
+// MACD COLORS SECTION /////////////////////////////////////////////////////////
+// ( Colors of [MACD and Signal-Line] )
+MACD_width          = input(title="MACD Line               ", defval=2, minval=1, type=input.integer, group="🚦🚦macd Width & Colors setting🚦🚦", inline="macdColor")
+MACD_color_High     = input(#11ff00, title="", type=input.color, group="🚦🚦macd Width & Colors setting🚦🚦", inline="macdColor")
+MACD_color_Low      = input(#e91e63, title="", type=input.color, group="🚦🚦macd Width & Colors setting🚦🚦", inline="macdColor")
+signal_width        = input(title="Signal Line               ", defval=2, minval=1, type=input.integer, group="🚦🚦macd Width & Colors setting🚦🚦", inline="signal")
+signalLine_col_hi   = input(#ffeb3b, title="", type=input.color, inline="signal", group="🚦🚦macd Width & Colors setting🚦🚦")
+signalLine_col_lo   = input(#ffeb3b, title="", type=input.color, inline="signal", group="🚦🚦macd Width & Colors setting🚦🚦")
+
+
+// ((Histogram Color)) /////////////////////////////////////////////////////////
+macd_hist_on        = input(true, "Histogram        ", inline="hist", group="🚦🚦macd Width & Colors setting🚦🚦")
+BuyStrongHist       = input(#26A69A, title="", type=input.color, inline="hist", group="🚦🚦macd Width & Colors setting🚦🚦")
+BuyWeakHist         = input(#B2DFDB, title="", type=input.color, inline="hist", group="🚦🚦macd Width & Colors setting🚦🚦")
+SellWeakHist        = input(#FFCDD2, title="✨", type=input.color, inline="hist", group="🚦🚦macd Width & Colors setting🚦🚦")
+SellStrongHist      = input(#FF5252, title="", type=input.color, inline="hist", group="🚦🚦macd Width & Colors setting🚦🚦")
+// ((FOR HISTOGRAM COLOR CONDITION))
+hist_col            = (histogram >= 0 ? (histogram[1] < histogram ? BuyStrongHist : BuyWeakHist) : histogram[1] < histogram ? SellWeakHist : SellStrongHist)
+
+
+// (( CROSSOVER DOT) ///////////////////////////////////////////////////////////
+macd_crsovr_dot_on  = input(true, "Cross               ", inline="dot", group="🚦🚦macd Width & Colors setting🚦🚦")
+macd_cross_width    = input(defval=5, title="", inline="dot", group="🚦🚦macd Width & Colors setting🚦🚦")
+dot_crsovr_col      = input(#ffffff, title="", type=input.color, inline="dot", group="🚦🚦macd Width & Colors setting🚦🚦")
+dot_crsndr_col      = input(color.new(#e91e63, 0), title="", type=input.color, inline="dot", group="🚦🚦macd Width & Colors setting🚦🚦")
+
+
+// (( MACD ZONE COLOR ))
+zone_on             = input(true, "Zone Color        ", inline="zone", group="🚦🚦macd Width & Colors setting🚦🚦")
+zone_crsovr_col     = input(color.new(color.lime, 70), title="", type=input.color, inline="zone", group="🚦🚦macd Width & Colors setting🚦🚦")
+zone_crsndr_col     = input(color.new(#e91e63, 70), title="", type=input.color, inline="zone", group="🚦🚦macd Width & Colors setting🚦🚦")
+
+///////////////////////////////////////// ((FOR MACD LINE COLOR CONDITION))
+MACD_line_col = if macd_grtr_signal    //
+    MACD_color_High                    //
+else                                   //
+    if macd_less_signal                //
+        MACD_color_Low                 //
+///////////////////////////////////////// ((FOR SIGNAL LINE COLOR CONDITION))
+signal_line_col = if macd_grtr_signal  //
+    signalLine_col_hi                  //
+else                                   //
+    if macd_less_signal                //
+        signalLine_col_lo              //
+///////////////////////////////////////// ((FOR MACD CROSS DOTs COLOR CONDITION))
+MACD_Dot_col = if macd_crsovr_signal   //
+    dot_crsovr_col                     //
+else                                   //
+    if macd_crsndr_signal              //
+        dot_crsndr_col                 //
+/////////////////////////////////////////////////////////////////////////////////////////////////
+zone_crsovr_plot = if macd_grtr_signal  and zone_on // ((For Zone Color Comdition + On/Off)) ///
+    zone_crsovr_col                                 ///////////////////////////////////////////
+else                                                //
+    if macd_less_signal and zone_on                 //
+        zone_crsndr_col                             //
+//////////////////////////////////////////////////////
+
+
+// MACD PLOTING //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+histplot    = plot(macd_hist_on ? histogram : na, title="Histogram", color=hist_col, style=plot.style_columns)
+macdplot    = plot(MACD, title="MACD", color=MACD_line_col, linewidth=MACD_width)
+signalplot  = plot(Signal, title="Signal", color=signal_line_col, linewidth=signal_width)
+fill(macdplot , signalplot, color=zone_crsovr_plot)
+
+plot(macd_crsovr_dot_on ? macd_crsovr_signal : na,  title="c-over", style=plot.style_circles, color=MACD_Dot_col, linewidth=macd_cross_width)
+plot(macd_crsovr_dot_on ? macd_crsndr_signal : na,  title="c-under", style=plot.style_circles, color=MACD_Dot_col, linewidth=macd_cross_width)
