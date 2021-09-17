@@ -1,0 +1,164 @@
+//@version=4
+//original author @LazyBear
+
+
+//Assembled by @ClassicScott
+
+//An adaptation of LazyBear's Wavetrend Oscillator
+
+//In this version I've added a second Wavetrend plot. The longer plot gives you a longer timeframe momentum bias, and the shorter plot gives you entries and/or exits.
+
+//With the traditional Wavetrend Oscillator there is a simple moving average on the WTO that is to help provide entries and exits.
+//I've done away with this as there are already two plots, and I felt more would just clutter the indicator. Instead of plotting the SMA I've plotted the crosse
+//along the bottom and top of the indicator. Also, as is not the case in LazyBear's version, this SMA length is adjustable. By default it is set to 3,
+//which is the default setting on the original indicator.
+
+//I've also plotted background colors for when there is what I call a momentum shift. If one or the other oscillators crosses the centerline a colored bar
+//is plotted. By default it is turned on for both WTOs, though in practice you might only want it on for the longer one.
+
+//I would say use of the indicator is similar to the original WTO or many other oscillators. Buying oversold and selling overbought, but being mindful of the momentum
+//of the market. If the longer WTO is above the centerline it's best to be looking for dips to the centerline, or for an overbought signal by the faster WTO, and vice
+//versa if the longer WTO is below the centerline. That said, you can also adjust the length of the SMA on the faster WTO to fine tune entries or exits, which is kind
+//of how you would trade LazyBear's version. In this case you have that additional confirmation of market momentum.
+
+//You can set colored candles to either of the WTO plots via a dropdown menu.
+
+//There are alerts for overbought and oversold situations, centerline crosses, and Wavetrend crosses.
+
+//That's about it. Hope you enjoy this particular implementation of LazyBear's well known indicator.
+
+//Ah yes, last thing: Original version the source is set to hlc3. I've given you the opportunity to change that, so if you prefer using close you can, or whatever
+//you want.
+
+
+study(title="Wave Trend Oscillator", shorttitle="+ WTO")
+
+
+src = input(defval=hlc3, title="Source")
+
+
+//WTO PLOT ONE
+channel_len = input(defval=8, title="Channel Length", group="Primary Wavetrend Inputs")
+average_len = input(defval=6, title="Average Length", group="Primary Wavetrend Inputs")
+wt_1_ma_len = input(defval=3, title="Moving Average Length", group="Primary Wavetrend Inputs")
+
+esa = ema(src, channel_len)
+d = ema(abs(src - esa), channel_len)
+ci = (src - esa) / (0.015 * d)
+tci = ema(ci, average_len)
+wt_1 = tci
+wt_1_ma = sma(wt_1, wt_1_ma_len)
+
+//COLOR INPUTS
+wt_1_up = input(#ff9800, title="High", inline="wt 1 color", group="Primary Wavetrend Inputs")
+wt_1_down = input(#2962ff, title="Low", inline="wt 1 color", group="Primary Wavetrend Inputs")
+wt_1_color = color.from_gradient(wt_1, -80, 80, wt_1_down, wt_1_up)
+
+plot(wt_1, color=wt_1_color, title="Primary Wavetrend")
+
+
+//////////////////////////////////////////////////////
+
+
+//WTO PLOT TWO
+channel_len_2 = input(defval=13, title="Channel Length", group="Secondary Wavetrend Inputs")
+average_len_2 = input(defval=55, title="Average Length", group="Secondary Wavetrend Inputs")
+
+esa2 = ema(src, channel_len_2)
+d2 = ema(abs(src - esa2), channel_len_2)
+ci2 = (src - esa2) / (0.015 * d2)
+tci2 = ema(ci2, average_len_2)
+wt_2 = tci2
+
+//COLOR INPUTS
+wt_2_up = input(#00bcd4, title="High", inline="wt 2 color", group="Secondary Wavetrend Inputs")
+wt_2_down = input(#e91e63, title="Low", inline="wt 2 color", group="Secondary Wavetrend Inputs")
+wt_2_color = color.from_gradient(wt_2, -60, 60, wt_2_down, wt_2_up)
+
+plot(wt_2, color=wt_2_color, title="Secondary Wavetrend")
+
+
+//////////////////////////////////////////////////////
+
+
+////MOMENTUM CHANGE & BACKGROUND COLORS
+
+//PRIMARY WTO
+mom_long_color_1 = input(color.new(color.blue, 85), title="Long Background Color", inline="1", group="Primary Wavetrend Inputs")
+mom_short_color_1 = input(color.new(color.red, 85), title="Short Background Color", inline="1", group="Primary Wavetrend Inputs")
+
+mom_change_long_1 = crossover(wt_1, 0)
+mom_change_short_1 = crossunder(wt_1, 0)
+bgcolor(mom_change_long_1 ? mom_long_color_1 : na, title="Long Background Color")
+bgcolor(mom_change_short_1 ? mom_short_color_1 : na, title ="Short Background Color")
+
+//MOVING AVERAGE CROSS SIGNALS ON PRIMARY WAVETREND
+plotshape(crossover(wt_1, wt_1_ma), title="Maybe Buy", style=shape.circle, color=color.blue, location=location.bottom)
+plotshape(crossunder(wt_1, wt_1_ma), title="Maybe Sell", style=shape.circle, color=color.red, location=location.top)
+
+
+//SECONDARY WTO
+mom_long_color_2 = input(color.new(color.blue, 85), title="Long Background Color", inline="2", group="Secondary Wavetrend Inputs")
+mom_short_color_2 = input(color.new(color.red, 85), title="Short Background Color", inline="2", group="Secondary Wavetrend Inputs")
+
+mom_change_long_2 = crossover(wt_2, 0)
+mom_change_short_2 = crossunder(wt_2, 0)
+bgcolor(mom_change_long_2 ? mom_long_color_2 : na, title="Long Background Color - Secondary WTO")
+bgcolor(mom_change_short_2 ? mom_short_color_2 : na, title ="Short Background Color - Secondary WTO")
+
+
+//////////////////////////////////////////////////////
+
+
+////CANDLE COLOR
+candle_color = input(defval=true, title="Colored Candles?", group="Wavetrend Candle Colors")
+i_cc_selection = input(defval="WT 1", options=["WT 1", "WT 2"], title="WT 1 or 2 for Colored Candles?", group="Wavetrend Candle Colors")
+
+//COLOR INPUTS
+cc_1_up = input(#ff9800, title="WT 1 +", group="Wavetrend Candle Colors")
+cc_1_down = input(#2962ff, title="WT 1 -", group="Wavetrend Candle Colors")
+
+cc_1_color = color.from_gradient(wt_1, -80, 80, cc_1_down, cc_1_up)
+
+
+cc_2_up = input(#00bcd4, title="WT 2 +", group="Wavetrend Candle Colors")
+cc_2_down = input(#e91e63, title="WT 2 -", group="Wavetrend Candle Colors")
+
+cc_2_color = color.from_gradient(wt_2, -60, 60, cc_2_down, cc_2_up)
+
+cc_selection = i_cc_selection == "WT 1" ? cc_1_color : i_cc_selection == "WT 2" ? cc_2_color : na
+
+barcolor(candle_color ? cc_selection : na, title="Colored Candles")
+
+
+//////////////////////////////////////////////////////
+
+
+////HORIZONTAL LINES & OB/OS REGIONS
+wto_2_overbought = hline(80, color=#ef5350, linestyle=hline.style_dotted, title="80")
+wto_1_overbought = hline(60, color=#ef5350, linestyle=hline.style_dotted, title="60")
+uline40 = hline(40, color=#787b86, linestyle=hline.style_dotted, title="40")
+uline20 = hline(20, color=#787b86, linestyle=hline.style_dotted, title="20")
+median = hline(0, color=#787b86, linestyle=hline.style_dashed, title="Median")
+dline20 = hline(-20, color=#787b86, linestyle=hline.style_dotted, title="-20")
+dline40 = hline(-40, color=#787b86, linestyle=hline.style_dotted, title="-40")
+wto_1_oversold = hline(-60, color=#2196f3, linestyle=hline.style_dotted, title="-60")
+wto_2_oversold = hline(-80, color=#2196f3, linestyle=hline.style_dotted, title="-60")
+
+fill_col_upper = input(color.new(#ff5252, 85), title="Overbought Fill Color", group="Oscillator Extremes")
+fill_col_lower = input(color.new(#2196f3, 85), title="Oversold Fill Color", group="Oscillator Extremes")
+fill(wto_2_overbought, wto_1_overbought, color=fill_col_upper, title="Overbought Region")
+fill(wto_2_oversold, wto_1_oversold, color=fill_col_lower, title="Oversold Region")
+
+
+//////////////////////////////////////////////////////
+
+
+//ALERT CONDITIONS
+alertcondition(cross(wt_1, -80), title="Primary WTO -80 Cross", message="Primary WTO has crossed the -80 line.")
+alertcondition(crossunder(wt_1, -60), title="Primary WTO Cross into Oversold Zone", message="Primary WTO has crossed into oversold zone.")
+alertcondition(cross(wt_1, 80), title="Primary WTO 80 Cross", message="Primary WTO has crossed the 80 line.")
+alertcondition(crossover(wt_1, 60), title="Primary WTO Cross into Overbought Zone", message="Primary WTO has crossed into overbought zone.")
+alertcondition(cross(wt_1, wt_2), title="Primary WTO Crossing Secondary WTO", message="Primary WTO has crossed Secondary WTO.")
+alertcondition(cross(wt_1, 0), title="Primary WTO Centerline Cross", message="Primary WTO has crossed the centerline.")
+alertcondition(cross(wt_2, 0), title="Secondary WTO Centerline Cross", message="Secondary WTO has crossed the centerline.")
